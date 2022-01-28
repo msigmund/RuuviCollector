@@ -118,6 +118,19 @@ class InfluxDBConverterTest {
         assertFalse(point.toString().contains("accelerationAngleFromZ"));
     }
 
+    @Test
+    void toInflux2WithAllowFunctionShouldIncludeRequiredValuesOnly() {
+        final EnhancedRuuviMeasurement measurement = createMeasurement();
+        final Predicate<String> allowFunction = fieldName ->
+            fieldName.equals("accelerationTotal")
+                || fieldName.equals("measurementSequenceNumber")
+                || fieldName.equals("txPower");
+        measurement.setMeasurementSequenceNumber(null);
+        final com.influxdb.client.write.Point point = InfluxDBConverter.toInflux2(measurement, allowFunction);
+        assertTrue(point.toLineProtocol().contains("mac")); // cannot be disabled
+        assertTrue(point.toLineProtocol().contains("dataFormat")); // cannot be disabled
+    }
+
     private static void assertPointContainsAllValues(final Point point) {
         assertPoint(point, allValues(), emptySet());
     }

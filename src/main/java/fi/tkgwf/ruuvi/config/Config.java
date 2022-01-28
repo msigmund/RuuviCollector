@@ -1,10 +1,6 @@
 package fi.tkgwf.ruuvi.config;
 
-import fi.tkgwf.ruuvi.db.DBConnection;
-import fi.tkgwf.ruuvi.db.DummyDBConnection;
-import fi.tkgwf.ruuvi.db.InfluxDBConnection;
-import fi.tkgwf.ruuvi.db.LegacyInfluxDBConnection;
-import fi.tkgwf.ruuvi.db.PrometheusExporter;
+import fi.tkgwf.ruuvi.db.*;
 import fi.tkgwf.ruuvi.strategy.LimitingStrategy;
 import fi.tkgwf.ruuvi.strategy.impl.DefaultDiscardingWithMotionSensitivityStrategy;
 import fi.tkgwf.ruuvi.strategy.impl.DiscardUntilEnoughTimeHasElapsedStrategy;
@@ -57,6 +53,9 @@ public abstract class Config {
     private static int influxBatchMaxSize;
     private static int influxBatchMaxTimeMs;
     private static long measurementUpdateLimit;
+    private static String influx2Token;
+    private static String influx2Bucket;
+    private static String influx2Org;
     private static String storageMethod;
     private static String storageValues;
     private static final Set<String> FILTER_INFLUXDB_FIELDS = new HashSet<>();
@@ -103,6 +102,9 @@ public abstract class Config {
         influxBatchMaxSize = 2000;
         influxBatchMaxTimeMs = 100;
         measurementUpdateLimit = 9900;
+        influx2Bucket = "ruuvi";
+        influx2Org = "ruuvi";
+        influx2Token = "notSet";
         storageMethod = "influxdb";
         storageValues = "extended";
         FILTER_INFLUXDB_FIELDS.clear();
@@ -142,6 +144,9 @@ public abstract class Config {
         influxUser = props.getProperty("influxUser", influxUser);
         influxPassword = props.getProperty("influxPassword", influxPassword);
         measurementUpdateLimit = parseLong(props, "measurementUpdateLimit", measurementUpdateLimit);
+        influx2Token = props.getProperty("influx2Token", influx2Token);
+        influx2Bucket = props.getProperty("influx2Bucket", influx2Bucket);
+        influx2Org = props.getProperty("influx2Org", influx2Org);
         storageMethod = props.getProperty("storage.method", storageMethod);
         storageValues = props.getProperty("storage.values", storageValues);
         FILTER_INFLUXDB_FIELDS.addAll(parseFilterInfluxDbFields(props));
@@ -362,6 +367,8 @@ public abstract class Config {
                 return new PrometheusExporter(getPrometheusHttpPort());
             case "dummy":
                 return new DummyDBConnection();
+            case "influxdb2":
+                return new InfluxDB2Connection();
             default:
                 try {
                     LOG.info("Trying to use custom DB dbConnection class: " + storageMethod);
@@ -435,6 +442,12 @@ public abstract class Config {
     public static long getMeasurementUpdateLimit() {
         return measurementUpdateLimit;
     }
+
+    public static String getInflux2Token() { return influx2Token; }
+
+    public static String getInflux2Bucket() { return influx2Bucket; }
+
+    public static String getInflux2Org() { return influx2Org; }
 
     public static boolean isAllowedMAC(String mac) {
         return mac != null && filterMode.test(mac);

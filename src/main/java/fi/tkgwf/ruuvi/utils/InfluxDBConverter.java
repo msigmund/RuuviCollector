@@ -1,5 +1,6 @@
 package fi.tkgwf.ruuvi.utils;
 
+import com.influxdb.client.domain.WritePrecision;
 import fi.tkgwf.ruuvi.bean.EnhancedRuuviMeasurement;
 import fi.tkgwf.ruuvi.config.Config;
 import java.util.ArrayList;
@@ -89,6 +90,62 @@ public class InfluxDBConverter {
     }
 
     private static void addValueIfAllowed(Point.Builder point,
+                                          String name,
+                                          EnhancedRuuviMeasurement measurement,
+                                          Function<EnhancedRuuviMeasurement, ? extends Number> getter,
+                                          Predicate<String> allowField) {
+        final Number value = getter.apply(measurement);
+        if (value != null && allowField.test(name)) {
+            point.addField(name, value);
+        }
+    }
+
+    public static com.influxdb.client.write.Point toInflux2(EnhancedRuuviMeasurement measurement) {
+        return toInflux2(measurement, Config.getAllowedInfluxDbFieldsPredicate(measurement.getMac()));
+    }
+
+    public static com.influxdb.client.write.Point toInflux2 (EnhancedRuuviMeasurement measurement, Predicate<String> allowField){
+        com.influxdb.client.write.Point point = com.influxdb.client.write.Point
+            .measurement(Config.getInfluxMeasurement())
+            .addTag("mac", measurement.getMac());
+
+        if (measurement.getName() != null) {
+            point.addTag("name", measurement.getName());
+        }
+        if (measurement.getDataFormat() != null) {
+            point.addTag("dataFormat", String.valueOf(measurement.getDataFormat()));
+        }
+        if (StringUtils.isNotBlank(measurement.getReceiver())) {
+            point.addTag("receiver", measurement.getReceiver());
+        }
+        if (measurement.getTime() != null) {
+            point.time(measurement.getTime(), WritePrecision.MS);
+        }
+
+        addValueIfAllowed(point, "temperature", measurement, EnhancedRuuviMeasurement::getTemperature, allowField);
+        addValueIfAllowed(point, "humidity", measurement, EnhancedRuuviMeasurement::getHumidity, allowField);
+        addValueIfAllowed(point, "pressure", measurement, EnhancedRuuviMeasurement::getPressure, allowField);
+        addValueIfAllowed(point, "accelerationX", measurement, EnhancedRuuviMeasurement::getAccelerationX, allowField);
+        addValueIfAllowed(point, "accelerationY", measurement, EnhancedRuuviMeasurement::getAccelerationY, allowField);
+        addValueIfAllowed(point, "accelerationZ", measurement, EnhancedRuuviMeasurement::getAccelerationZ, allowField);
+        addValueIfAllowed(point, "batteryVoltage", measurement, EnhancedRuuviMeasurement::getBatteryVoltage, allowField);
+        addValueIfAllowed(point, "txPower", measurement, EnhancedRuuviMeasurement::getTxPower, allowField);
+        addValueIfAllowed(point, "movementCounter", measurement, EnhancedRuuviMeasurement::getMovementCounter, allowField);
+        addValueIfAllowed(point, "measurementSequenceNumber", measurement, EnhancedRuuviMeasurement::getMeasurementSequenceNumber, allowField);
+        addValueIfAllowed(point, "rssi", measurement, EnhancedRuuviMeasurement::getRssi, allowField);
+        addValueIfAllowed(point, "accelerationTotal", measurement, EnhancedRuuviMeasurement::getAccelerationTotal, allowField);
+        addValueIfAllowed(point, "absoluteHumidity", measurement, EnhancedRuuviMeasurement::getAbsoluteHumidity, allowField);
+        addValueIfAllowed(point, "dewPoint", measurement, EnhancedRuuviMeasurement::getDewPoint, allowField);
+        addValueIfAllowed(point, "equilibriumVaporPressure", measurement, EnhancedRuuviMeasurement::getEquilibriumVaporPressure, allowField);
+        addValueIfAllowed(point, "airDensity", measurement, EnhancedRuuviMeasurement::getAirDensity, allowField);
+        addValueIfAllowed(point, "accelerationAngleFromX", measurement, EnhancedRuuviMeasurement::getAccelerationAngleFromX, allowField);
+        addValueIfAllowed(point, "accelerationAngleFromY", measurement, EnhancedRuuviMeasurement::getAccelerationAngleFromY, allowField);
+        addValueIfAllowed(point, "accelerationAngleFromZ", measurement, EnhancedRuuviMeasurement::getAccelerationAngleFromZ, allowField);
+
+        return point;
+    }
+
+    private static void addValueIfAllowed(com.influxdb.client.write.Point point,
                                           String name,
                                           EnhancedRuuviMeasurement measurement,
                                           Function<EnhancedRuuviMeasurement, ? extends Number> getter,
